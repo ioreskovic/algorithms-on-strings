@@ -1,5 +1,4 @@
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.io.StdIn
 
 object trie_matching_p2 {
@@ -26,21 +25,6 @@ object trie_matching_p2 {
     def locations(chars: List[Char]): List[Int] = {
 
       @tailrec
-      def collectLeavesBfsMut(tx: mutable.Queue[Trie], res: List[Int]): List[Int] = {
-        if (tx.nonEmpty) {
-          val t = tx.dequeue()
-          t match {
-            case Leaf(i) => collectLeavesBfsMut(tx, i :: res)
-            case _ => {
-              t.links.foreach{ case (c, y) => tx.enqueue(y) }
-              collectLeavesBfsMut(tx, res)
-            }
-          }
-        }
-        else res
-      }
-
-      @tailrec
       def collectLeavesBFS(tx: List[Trie], res: List[Int]): List[Int] = {
         if (tx.nonEmpty) {
           tx.head match {
@@ -53,7 +37,7 @@ object trie_matching_p2 {
 
       @tailrec
       def traverse(t: Trie, cx: List[Char]): List[Int] = (t, cx) match {
-        case (_, c :: Nil) if c == '$' => collectLeavesBfsMut(mutable.Queue(t), Nil)
+        case (_, c :: Nil) if c == '$' => collectLeavesBFS(List(t), Nil)
         case (_, c :: cs) if t.hasLink(c) => traverse(t.links(c), cs)
         case _ => Nil
       }
@@ -152,7 +136,7 @@ object trie_matching_p2 {
     val locations = patterns.foldLeft(Set[Int]()){ case (s, p) => s ++ trie.locations(p) }.toList.sorted
     val timeEnd = System.currentTimeMillis()
     println(locations.mkString(" "))
-//    println("Time: " + (timeEnd - timeStart))
+    println("Time: " + (timeEnd - timeStart))
   }
 
 }
