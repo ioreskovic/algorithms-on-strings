@@ -1,18 +1,17 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class TrieMatching implements Runnable {
+public class TrieMatchingExtended implements Runnable {
     public static class Trie {
         private String word;
         private Map<Character, Trie> children;
+        private Boolean isLeaf;
 
-        public Trie(String word, Map<Character, Trie> children) {
+        public Trie(String word, Map<Character, Trie> children, Boolean isLeaf) {
             this.word = word;
             this.children = children;
+            this.isLeaf = isLeaf;
         }
 
         public String getWord() {
@@ -35,20 +34,39 @@ public class TrieMatching implements Runnable {
             this.children.put(c, child);
         }
 
+        public Boolean getIsLeaf() {
+            return isLeaf;
+        }
+
+        public void setIsLeaf(Boolean isLeaf) {
+            this.isLeaf = isLeaf;
+        }
+
         public void consume(char[] letters) {
             int i = 0;
             Trie curr = this;
             while (i < letters.length) {
                 char c = letters[i];
+                boolean lastLetter = i == (letters.length - 1);
                 if (curr.children.containsKey(c)) {
                     curr = curr.children.get(c);
+                    if (lastLetter) {
+                        curr.setIsLeaf(true);
+                    }
                 } else {
-                    Trie child = new Trie(curr.word + String.valueOf(c), new HashMap<>(4));
+                    Trie child = new Trie(curr.word + String.valueOf(c), new HashMap<>(4), lastLetter);
                     curr.setChild(c, child);
                     curr = child;
                 }
                 i++;
             }
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            children.forEach((character, trie) -> sb.append("{" + character + "->" + trie.toString() + "}"));
+            return sb.toString();
         }
     }
 
@@ -76,6 +94,9 @@ public class TrieMatching implements Runnable {
                 return true;
             } else if (node.children.containsKey(c)) {
                 node = node.children.get(c);
+                if (node.getIsLeaf()) {
+                    return true;
+                }
                 i++;
             } else {
                 return false;
@@ -95,7 +116,7 @@ public class TrieMatching implements Runnable {
                 patterns.add (in.readLine ());
             }
 
-            List <Integer> ans = solve(text, n, patterns);
+            List <Integer> ans = new ArrayList<>(new TreeSet<>(solve(text, n, patterns)));
 
             for (int j = 0; j < ans.size (); j++) {
                 System.out.print ("" + ans.get (j));
@@ -109,17 +130,16 @@ public class TrieMatching implements Runnable {
     }
 
     private List<Integer> solve(String text, int n, List<String> patterns) {
-        Trie trie = new Trie("", new HashMap<>(4));
+        Trie trie = new Trie("", new HashMap<>(4), false);
         int i = 0;
         while (i < n) {
             trie.consume(patterns.get(i).toCharArray());
             i++;
         }
-
         return trieMatching(text.toCharArray(), trie);
     }
 
     public static void main (String [] args) {
-        new Thread (new TrieMatching ()).start ();
+        new Thread (new TrieMatchingExtended ()).start ();
     }
 }
