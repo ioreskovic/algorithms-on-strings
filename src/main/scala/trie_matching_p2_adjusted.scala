@@ -1,109 +1,112 @@
 import scala.annotation.tailrec
+import scala.collection.mutable.{Map => MMap, HashMap => MHashMap}
 import scala.io.StdIn
 
 object trie_matching_p2_adjusted {
 
-  class GenomeTrie(var a: Option[GenomeTrie] = None, var c: Option[GenomeTrie] = None, var g: Option[GenomeTrie] = None, var t: Option[GenomeTrie] = None, var x: Option[GenomeTrie] = None, var i: Int = -1) {
+  case class GenomeTrie(
+                         var aLink: Option[GenomeTrie] = None,
+                         var cLink: Option[GenomeTrie] = None,
+                         var tLink: Option[GenomeTrie] = None,
+                         var gLink: Option[GenomeTrie] = None,
+                         var xLink: Option[GenomeTrie] = None,
+                         var position: Option[Int] = None) {
 
-    def isEmpty: Boolean = {
-      a.isEmpty && c.isEmpty && g.isEmpty && t.isEmpty && x.isEmpty
+    def links: Map[Char, GenomeTrie] = Map('A' -> aLink, 'C' -> cLink, 'G' -> gLink, 'T' -> tLink, '$' -> xLink).filter(_._2.nonEmpty).mapValues(_.get)
+
+    def isEmpty: Boolean = aLink.isEmpty && cLink.isEmpty && tLink.isEmpty && gLink.isEmpty && xLink.isEmpty
+
+    def hasLink(char: Char): Boolean = {
+      if (char == 'A') aLink.nonEmpty
+      else if (char == 'C') cLink.nonEmpty
+      else if (char == 'T') tLink.nonEmpty
+      else if (char == 'G') gLink.nonEmpty
+      else if (char == '$') xLink.nonEmpty
+      else throw new IllegalArgumentException("Wrong alphabet letter")
     }
 
-    def links: List[GenomeTrie] = List(a, c, g, t, x).flatten
-
-    def hasLink(char: Char): Boolean = char match {
-      case 'A' => a.isDefined
-      case 'C' => c.isDefined
-      case 'G' => g.isDefined
-      case 'T' => t.isDefined
-      case '$' => x.isDefined
-      case _ => throw new IllegalArgumentException
+    def withLink(char: Char, subTrie: GenomeTrie): GenomeTrie = {
+      if (char == 'A') { aLink = Some(subTrie); this }
+      else if (char == 'C') { cLink = Some(subTrie); this }
+      else if (char == 'T') { tLink = Some(subTrie); this }
+      else if (char == 'G') { gLink = Some(subTrie); this }
+      else if (char == '$') { xLink = Some(subTrie); this }
+      else throw new IllegalArgumentException("Wrong alphabet letter")
     }
 
-    def apply(char: Char): Option[GenomeTrie] = char match {
-      case 'A' => a
-      case 'C' => c
-      case 'G' => g
-      case 'T' => t
-      case '$' => x
-      case _ => throw new IllegalArgumentException
+    def apply(char: Char): GenomeTrie = {
+      if (char == 'A') aLink.get
+      else if (char == 'C') cLink.get
+      else if (char == 'T') tLink.get
+      else if (char == 'G') gLink.get
+      else if (char == '$') xLink.get
+      else throw new IllegalArgumentException("Wrong alphabet letter")
     }
 
-    def update(char: Char, gt: GenomeTrie): GenomeTrie = char match {
-      case 'A' => a = Some(gt); this;
-      case 'C' => c = Some(gt); this;
-      case 'G' => g = Some(gt); this;
-      case 'T' => t = Some(gt); this;
-      case '$' => x = Some(gt); this;
-      case _ => throw new IllegalArgumentException
-    }
+    def consume(str: String, pos: Int): GenomeTrie = consume(str.toList, pos)
 
-    def consume(string: String, loc: Int): GenomeTrie = {
+    private def consume(chars: List[Char], pos: Int): GenomeTrie = {
       @tailrec
-      def loop(gt: GenomeTrie, chars: List[Char]): Unit = chars match {
-        case Nil =>
-        case head :: tail => {
-          val ngt = gt(head) match {
-            case None => new GenomeTrie(i = loc)
-            case Some(ogt) => ogt
-          }
-
-          gt(head) = ngt
-          loop(ngt, tail)
-        }
+      def loop(trie: GenomeTrie, cx: List[Char]): GenomeTrie = cx match {
+        case Nil => this
+        case c :: Nil if trie.hasLink(c) => loop(trie(c), Nil)
+        case c :: Nil => loop(trie.withLink(c, GenomeTrie(position = Some(pos)))(c), Nil)
+        case c :: cs if trie.hasLink(c) => loop(trie(c), cs)
+        case c :: cs => loop(trie.withLink(c, GenomeTrie())(c), cs)
       }
 
-      loop(this, string.toList)
-      this
+      loop(this, chars)
     }
 
     override def toString: String = {
-      val links = List(('A', a), ('C', c), ('G', g), ('T', t), ('X', x))
-      val linksString = links.collect{ case (char, Some(trie)) => s"$char -> $trie" }.mkString(", ")
-      s"Node($i)[$linksString]"
+      val p = if (position.nonEmpty) position.get else ""
+      Map('A' -> aLink, 'C' -> cLink, 'G' -> gLink, 'T' -> tLink, '$' -> xLink).filter(_._2.nonEmpty).mapValues(_.get).mkString(s"Trie($p)[", ", ", "]")
     }
 
-    def locations(s: String): List[Int] = {
+    def locations(str: String): List[Int] = {
       @tailrec
-      def collect(tx: List[GenomeTrie], res: List[Int]): List[Int] = {
-        if (tx.nonEmpty) {
-          if (tx.head.isEmpty) {
-            collect(tx.tail, tx.head.i :: res)
-          }
-          else {
-            collect(tx.head.links ::: tx.tail, res)
-          }
-        }
-        else res
+      def collect(tx: List[GenomeTrie], res: List[Int]): List[Int] = tx match {
+        case Nil => res
+        case (t @ GenomeTrie(_, _, _, _, _, Some(pos))) :: ts => collect(t.links.values.toList ::: ts, pos :: res)
+        case t :: ts => collect(t.links.values.toList ::: ts, res)
       }
 
       @tailrec
-      def traverse(gt: GenomeTrie, cx: List[Char]): List[Int] = cx match {
-        case last :: Nil if last == '$' => collect(List(gt), Nil)
-        case head :: tail if gt.hasLink(head) => traverse(gt(head).get, tail)
+      def traverse(trie: GenomeTrie, cx: List[Char]): List[Int] = cx match {
+        case c :: Nil if c == '$' => collect(List(trie), Nil)
+        case c :: cs if trie.hasLink(c) => traverse(trie(c), cs)
         case _ => Nil
       }
 
-      traverse(this, (s + '$').toList)
+      traverse(this, (str + '$').toList)
+    }
+
+    def transitions: List[GenomeTrieTransition] = {
+      def loop(from: Int, t: GenomeTrie): List[GenomeTrieTransition] = {
+        if (t.isEmpty) Nil
+        else t.links.foldLeft(List[GenomeTrieTransition]()) { case (acc, ((c, y))) => GenomeTrieTransition(from, from + acc.size + 1, c) :: loop(from + acc.size + 1, y) ::: acc; }
+      }
+
+      loop(0, this)
     }
   }
 
   object GenomeTrie {
-    def apply(): GenomeTrie = new GenomeTrie()
-
-    def suffixTrie(s: String): GenomeTrie = {
-      val trie = new GenomeTrie()
-      s.tails.zipWithIndex.foreach{ case (x, i) => trie.consume(x + '$', i) }
-      trie
+    def suffix(str: String): GenomeTrie = {
+      val suffixTrie = GenomeTrie()
+      str.tails.zipWithIndex.foreach{ case (suffix, position) => suffixTrie.consume(suffix + '$', position) }
+      suffixTrie
     }
   }
+
+  case class GenomeTrieTransition(from: Int, to: Int, char: Char)
 
   def main(args: Array[String]): Unit = {
     val text = StdIn.readLine()
     val nPatterns = StdIn.readLine().toInt
     val patterns = (0 until nPatterns).map(_ => StdIn.readLine())
     val timeStart = System.currentTimeMillis()
-    val trie = GenomeTrie.suffixTrie(text)
+    val trie = GenomeTrie.suffix(text)
     val locations = patterns.foldLeft(Set[Int]()){ case (s, p) => s ++ trie.locations(p) }.toList.sorted
     val timeEnd = System.currentTimeMillis()
     println(locations.mkString(" "))
