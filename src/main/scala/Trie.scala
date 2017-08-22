@@ -7,6 +7,8 @@ abstract class Trie {
 
   def hasLink(char: Char): Boolean = links.contains(char)
 
+  def apply(char: Char): Trie = links(char)
+
   def consume(chars: List[Char], len: Int): Trie
 
   def consume(s: String): Trie = consume(s.toList, s.length)
@@ -20,7 +22,6 @@ abstract class Trie {
   def locations(s: String): List[Int] = locations((s + '$').toList)
 
   def locations(chars: List[Char]): List[Int] = {
-
     def collectLeaves(t: Trie): List[Int] = t match {
       case Leaf(i) => List(i)
       case _ => t.links.values.flatMap(y => collectLeaves(y)).toList
@@ -36,6 +37,24 @@ abstract class Trie {
     traverse(this, chars)
   }
 
+  def textLocations(str: String): List[Int] = {
+    @tailrec
+    def loop(trie: Trie, start: Int, cx: List[Char]): Option[Int] = (trie, cx) match {
+      case (Leaf(_), _) => Some(start)
+      case (Node(_), _) if trie.hasLink('$') => Some(start)
+      case (Node(_), c :: cs) if trie.hasLink(c) => loop(trie(c), start, cs)
+      case _ => None
+    }
+
+    @tailrec
+    def suffixLoop(position: Int, sx: List[List[Char]], res: List[Option[Int]]): List[Option[Int]] = sx match {
+      case Nil => res
+      case s :: ss => suffixLoop(position + 1, ss, loop(this, position, s) :: res)
+    }
+
+    suffixLoop(0, str.tails.map(_.toList).toList.init, Nil).flatten.sorted
+  }
+
   def transitions: List[Transition] = {
     def loop(from: Int, t: Trie): List[Transition] = t match {
       case Leaf(_) => Nil
@@ -49,7 +68,7 @@ abstract class Trie {
 case class Transition(from: Int, to: Int, char: Char)
 
 object Trie {
-  def apply(): Trie = Root(Map().withDefaultValue(Leaf(-1)))
+  def apply(): Trie = Node(Map().withDefaultValue(Leaf(-1)))
 
   def apply(s: String): Trie = Trie().consume(s)
 
@@ -61,23 +80,6 @@ object Trie {
     }
 
     loop(Trie(), 0, s.toList)
-  }
-}
-
-case class Root(links: Map[Char, Trie] = Map().withDefaultValue(Leaf(-1))) extends Trie {
-  override def consume(chars: List[Char], i: Int): Trie = chars match {
-    case c :: cs if hasLink(c) => Root(links + (c -> links(c).consume(cs, i)))
-    case c :: cs => Root(links + (c -> Leaf(i).consume(cs, i)))
-    case _ => this
-  }
-
-  override def contains(chars: List[Char]): Boolean = chars match {
-    case c :: cs => links(c).contains(cs)
-    case _ => true
-  }
-
-  lazy override val toString: String = {
-    "Root[" + links.mkString(",") + "]"
   }
 }
 
