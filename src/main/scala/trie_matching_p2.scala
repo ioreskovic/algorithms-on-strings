@@ -4,6 +4,8 @@ import scala.io.StdIn
 object trie_matching_p2 {
 
   abstract class Trie {
+    def apply(char: Char): Trie = links(char)
+
     def isEmpty: Boolean = links.isEmpty
 
     def links: Map[Char, Trie]
@@ -53,12 +55,29 @@ object trie_matching_p2 {
 
       loop(0, this)
     }
+
+    def textLocations(str: String): List[Int] = {
+      @tailrec
+      def loop(trie: Trie, start: Int, cx: List[Char]): Option[Int] = (trie, cx) match {
+        case (Leaf(_), _) => Some(start)
+        case (Node(_), c :: cs) if trie.hasLink(c) => loop(trie(c), start, cs)
+        case _ => None
+      }
+
+      @tailrec
+      def suffixLoop(position: Int, sx: List[List[Char]], res: List[Option[Int]]): List[Option[Int]] = sx match {
+        case Nil => res
+        case s :: ss => suffixLoop(position + 1, ss, loop(this, position, s) :: res)
+      }
+
+      suffixLoop(0, str.tails.map(_.toList).toList.init, Nil).flatten.sorted
+    }
   }
 
   case class Transition(from: Int, to: Int, char: Char)
 
   object Trie {
-    def apply(): Trie = Root(Map().withDefaultValue(Leaf(-1)))
+    def apply(): Trie = Node(Map().withDefaultValue(Leaf(-1)))
 
     def apply(s: String): Trie = Trie().consume(s)
 
@@ -70,23 +89,6 @@ object trie_matching_p2 {
       }
 
       loop(Trie(), 0, s.toList)
-    }
-  }
-
-  case class Root(links: Map[Char, Trie] = Map().withDefaultValue(Leaf(-1))) extends Trie {
-    override def consume(chars: List[Char], i: Int): Trie = chars match {
-      case c :: cs if hasLink(c) => Root(links + (c -> links(c).consume(cs, i)))
-      case c :: cs => Root(links + (c -> Leaf(i).consume(cs, i)))
-      case _ => this
-    }
-
-    override def contains(chars: List[Char]): Boolean = chars match {
-      case c :: cs => links(c).contains(cs)
-      case _ => true
-    }
-
-    lazy override val toString: String = {
-      "Root[" + links.mkString(",") + "]"
     }
   }
 
@@ -132,8 +134,8 @@ object trie_matching_p2 {
     val nPatterns = StdIn.readLine().toInt
     val patterns = (0 until nPatterns).map(_ => StdIn.readLine())
     val timeStart = System.currentTimeMillis()
-    val trie = Trie.suffix(text)
-    val locations = patterns.foldLeft(Set[Int]()){ case (s, p) => s ++ trie.locations(p) }.toList.sorted
+    val trie = patterns.foldLeft(Trie()){ case (t, p) => t.consume(p) }
+    val locations = trie.textLocations(text)
     val timeEnd = System.currentTimeMillis()
     println(locations.mkString(" "))
     println("Time: " + (timeEnd - timeStart))
