@@ -20,6 +20,8 @@ case class TrieNode(links: MMap[Char, TrieNode] = MHashMap(), position: Option[I
     links(c)
   }
 
+  def consume(s: String): TrieNode = consume(s, -1)
+
   def consume(s: String, location: Int): TrieNode = consume(s.toList, location)
 
   protected def consume(chars: List[Char], location: Int): TrieNode = {
@@ -55,6 +57,23 @@ case class TrieNode(links: MMap[Char, TrieNode] = MHashMap(), position: Option[I
     }
 
     traverse(this, (str + '$').toList)
+  }
+
+  def textLocations(str: String): List[Int] = {
+    @tailrec
+    def loop(trie: TrieNode, start: Int, cx: List[Char]): Option[Int] = (trie.isEmpty, cx) match {
+      case (true, _) => Some(start)
+      case (_, c :: cs) if trie.hasLink(c) => loop(trie(c), start, cs)
+      case _ => None
+    }
+
+    @tailrec
+    def suffixLoop(position: Int, sx: List[List[Char]], res: List[Option[Int]]): List[Option[Int]] = sx match {
+      case Nil => res
+      case s :: ss => suffixLoop(position + 1, ss, loop(this, position, s) :: res)
+    }
+
+    suffixLoop(0, str.tails.map(_.toList).toList.init, Nil).flatten.sorted
   }
 
   def transitions: List[TrieTransition] = {
