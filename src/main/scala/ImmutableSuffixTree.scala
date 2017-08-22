@@ -1,3 +1,5 @@
+import immutable_suffix_trie_p4.SuffixTreeNode
+
 import scala.annotation.tailrec
 import scala.io.StdIn
 
@@ -41,7 +43,7 @@ case class SuffixTreeNode(links: Map[List[Char], ImmutableSuffixTree]) extends I
         }
         else links(key) match {
           case SuffixTreeLeaf(oldPosition) => SuffixTreeNode(links - key + (prefix -> SuffixTreeNode(Map()).consume(aKey, position).consume(bKey, oldPosition)))
-          case _ => throw new IllegalArgumentException
+          case SuffixTreeNode(_) => SuffixTreeNode(links + (key -> links(key).consume(aKey, position))) // FIXME: AAA$
         }
       }
     }
