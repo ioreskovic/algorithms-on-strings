@@ -4,7 +4,6 @@ import scala.io.StdIn
 object immutable_suffix_trie_p4 {
   trait ImmutableSuffixTree {
     def links: Map[List[Char], ImmutableSuffixTree]
-    def isEmpty: Boolean = links.isEmpty
     def consume(chars: List[Char], position: Int): ImmutableSuffixTree
 
     def edges: List[String] = {
