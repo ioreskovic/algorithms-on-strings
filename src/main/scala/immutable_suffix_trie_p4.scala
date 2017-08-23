@@ -29,21 +29,14 @@ object immutable_suffix_trie_p4 {
   }
 
   case class SuffixTreeNode(links: Map[List[Char], ImmutableSuffixTree]) extends ImmutableSuffixTree {
-    override def consume(chars: List[Char], position: Int): ImmutableSuffixTree = {
-      val c = chars.head
-      val link = links.keys.find(_.head == c)
-      link match {
-        case None => SuffixTreeNode(links + (chars -> SuffixTreeLeaf(position)))
-        case Some(key) => {
-          val (prefix, aKey, bKey) = ImmutableSuffixTree.branch(chars, key)
-          if (prefix == key) {
-            if (aKey == Nil) this
-            else SuffixTreeNode(links + (prefix -> links(prefix).consume(aKey, position)))
-          }
-          else links(key) match {
-            case SuffixTreeLeaf(oldPosition) => SuffixTreeNode(links - key + (prefix -> SuffixTreeNode(Map()).consume(aKey, position).consume(bKey, oldPosition)))
-            case SuffixTreeNode(_) => SuffixTreeNode(links + (key -> links(key).consume(aKey, position))) // FIXME: AAA$
-          }
+    def consume(cbx: List[Char], position: Int): ImmutableSuffixTree = {
+      links.keys.find(l => l.nonEmpty && l.head == cbx.head) match {
+        case None => SuffixTreeNode(links + (cbx -> SuffixTreeLeaf(position)))
+        case Some(cax) => ImmutableSuffixTree.branch(cax, cbx) match {
+            case (cx, Nil, Nil) => this
+            case (cx, Nil, bx) => SuffixTreeNode(links + (cx -> links(cx).consume(bx, position)))
+            case (cx, ax, Nil) => throw new IllegalArgumentException("Should not happen: CAX=" + cax.mkString + " vs CBX=" + cbx.mkString)
+            case (cx, ax, bx) => SuffixTreeNode(links - cax + (cx -> SuffixTreeNode(Map(ax -> links(cax))).consume(bx, position)))
         }
       }
     }
