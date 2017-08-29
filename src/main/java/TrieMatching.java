@@ -9,6 +9,8 @@ public class TrieMatching implements Runnable {
     public static class Trie {
         private String word;
         private Map<Character, Trie> children;
+        Trie parent = null;
+
 
         public Trie(String word, Map<Character, Trie> children) {
             this.word = word;
@@ -44,6 +46,7 @@ public class TrieMatching implements Runnable {
                     curr = curr.children.get(c);
                 } else {
                     Trie child = new Trie(curr.word + String.valueOf(c), new HashMap<>(4));
+                    child.parent = this;
                     curr.setChild(c, child);
                     curr = child;
                 }
