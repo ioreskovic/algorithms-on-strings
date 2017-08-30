@@ -1,8 +1,17 @@
 import scala.io.StdIn
 
-case class Mer(head: Array[Char], last: Array[Char], inHead: Array[Int], inLast: Array[Int])
-
 object BWMatching {
+  case class Mer(head: Array[Char], last: Array[Char], inHead: Array[Int], inLast: Array[Int]) {
+    override lazy val toString: String = {
+      s"CountingSortResult(\n" +
+        s"\thead: $head\n" +
+        s"\tlast: $last\n" +
+        s"\tinHead: $inHead\n" +
+        s"\tinLast: $inLast\n" +
+      ")"
+    }
+  }
+
   object Alphabet {
     val size: Int = 5
 

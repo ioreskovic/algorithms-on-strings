@@ -1,8 +1,8 @@
 import scala.io.StdIn
 
-case class Mer(head: Array[Char], last: Array[Char], inHead: Array[Int], inLast: Array[Int])
-
 object InverseBWT {
+  case class Mer(head: Array[Char], last: Array[Char], inHead: Array[Int], inLast: Array[Int])
+
   object Alphabet {
     val size: Int = 5
 
